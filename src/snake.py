@@ -4,6 +4,7 @@ Created on Jan 23, 2012
 @author: Matej
 '''
 import pygame
+import menu
 import random
 
 size=[800,600]
@@ -24,7 +25,22 @@ DIRECTIONS["RIGHT"]=(20,0)
 
 COLORS = {1:RED,2:GREEN,3:BLUE,4:(160,160,160),5:(200,200,200)}
 
-def findEmptyLocation(grid, ocupied):
+pygame.init()
+
+fontSmall = pygame.font.Font("freesansbold.ttf", 16)
+fontBig = pygame.font.Font("freesansbold.ttf", 22)
+
+screen=pygame.display.set_mode(size)
+isGameOver = False
+clock =  pygame.time.Clock()
+add = False
+count = 0
+direction = None 
+font = pygame.font.Font("freesansbold.ttf", 16)
+snake = []
+
+def findEmptyLocation(grid, snakes):
+    ocupied = [snake.sprites for snake in snakes]
     number = grid[0]*grid[1]
     while(True):
         rand = random.randrange(1,number-grid[0])
@@ -54,7 +70,7 @@ class FoodManager:
                 self.list.remove(food)
     def new(self):
         rand = random.randrange(1,5)
-        food =Food((findEmptyLocation(grid,snake.sprites)), COLORS[rand], rand)
+        food =Food((findEmptyLocation(grid,snake)), COLORS[rand], rand)
         self.list.append(food)
         
 class Food:
@@ -81,11 +97,12 @@ class Sprite:
 
         
 class Snake:
-    def __init__(self, position):
+    def __init__(self, position, color):
         self.position=position
+        self.color=color
         self.sprites=[]
         self.sprites.append(Sprite(position))
-        self.ocupied=[]
+        self.ocupied=[self.position]
         self.crash = False
         self.numToAdd=0
     def move(self):
@@ -110,9 +127,9 @@ class Snake:
     def setDirection(self, direction):
         if(not isDirectionOposite(direction, self.sprites[0].direction)): 
             self.sprites[0].direction=direction
-    def draw(self, screen, color):
+    def draw(self, screen):
         for sprite in self.sprites:
-            sprite.draw(screen, color)
+            sprite.draw(screen, self.color)
     def add(self, numToAdd=1):
         position=(0,0)
         last = self.sprites[-1]
@@ -128,20 +145,51 @@ class Snake:
         
     
     
-
-pygame.init()
-
-screen=pygame.display.set_mode(size)
-isGameOver = False
-snake = Snake((0,40))
-clock =  pygame.time.Clock()
-add = False
-count = 0
-direction = None 
-font = pygame.font.Font("freesansbold.ttf", 16)
 food = FoodManager()
+#menu = menu.Menu(["Start","Exit"],(200,400),fontSmall,fontBig)
+mode = 1
+
+isStarted=False
+while(not isStarted):
+    event = pygame.event.get()
+    for e in event:
+        if e.type == pygame.QUIT:
+            isGameOver=True
+            isStarted=True
+            
+            
+        if e.type==pygame.KEYDOWN:
+            key = e.key
+            if key == pygame.K_1:
+                mode=1
+                isStarted=True
+            elif key == pygame.K_2:
+                mode=2
+                isStarted=True
+    
+    screen.fill((255,255,255))
+    msg="Pres 1 for single-player game"
+    msgSurface = font.render(msg,False, (20,50,100))
+    msgRect = msgSurface.get_rect()
+    msgRect.topleft=(300,300)
+    
+    screen.blit(msgSurface,msgRect)
+    
+    msg="Pres 2 for two-player game"
+    msgSurface = font.render(msg,False, (20,50,100))
+    msgRect = msgSurface.get_rect()
+    msgRect.topleft=(300,350)
+    
+    screen.blit(msgSurface,msgRect)
+    
+    pygame.display.update()
+    clock.tick(15)
+    
 
 
+
+for i in range(0, mode):
+    snake.append(Snake(findEmptyLocation(grid, snake),(random.randrange(0,255),random.randrange(0,255),random.randrange(0,255))))
 while not isGameOver:
     
     rand = random.randrange(0,20)
@@ -161,39 +209,51 @@ while not isGameOver:
         if e.type==pygame.KEYDOWN:
             key = e.key
             if key == pygame.K_UP:
-                direction=DIRECTIONS["UP"]
+                snake[0].setDirection(DIRECTIONS["UP"])
             elif key == pygame.K_DOWN:
-                direction=DIRECTIONS["DOWN"]
+                snake[0].setDirection(DIRECTIONS["DOWN"])
             elif key == pygame.K_LEFT:
-                direction=DIRECTIONS["LEFT"]
+                snake[0].setDirection(DIRECTIONS["LEFT"])
             elif key == pygame.K_RIGHT:
-                direction=DIRECTIONS["RIGHT"]
-            elif key == pygame.K_SPACE:
-                snake.add()
+                snake[0].setDirection(DIRECTIONS["RIGHT"])
+            elif(mode==2):
+                if key == pygame.K_w:
+                    snake[1].setDirection(DIRECTIONS["UP"])
+                elif key == pygame.K_s:
+                    snake[1].setDirection(DIRECTIONS["DOWN"])
+                elif key == pygame.K_a:
+                    snake[1].setDirection(DIRECTIONS["LEFT"])
+                elif key == pygame.K_d:
+                    snake[1].setDirection(DIRECTIONS["RIGHT"])
         
-    if direction!=None:
-        snake.setDirection(direction)
+
         
         
-        
-    snake.move()
+    for s in snake:
+        s.move()
     for f in food.list:
-        if(snake.position==f.position):
-            snake.add(f.value)
-            print ("Food: ",f.value)
-            food.list.remove(f)
-    if(snake.crash==True):
-        isGameOver=True
-        print "Snake crash"
-    snake.draw(screen, (100,100,100))
+        for s in snake:
+            if(s.position==f.position):
+                s.add(f.value)
+                print ("Food: ",f.value)
+                food.list.remove(f)
+                
+            if(s.crash==True):
+                isGameOver=True
+                print "Snake crash"
+    for s in snake:
+        s.draw(screen)
     food.draw(screen)
     
-    msg = "Score: " + str(len(snake.sprites)*10)
-    msgSurface = font.render(msg,False, (20,50,100))
-    msgRect = msgSurface.get_rect()
-    msgRect.topleft=(10,10)
+    for i,s in enumerate(snake):
+        msg = "Score" +str(i+1)+": " + str(len(s.sprites)*10)
+        msgSurface = font.render(msg,False, (20,50,100))
+        msgRect = msgSurface.get_rect()
+        msgRect.topleft=(0 ,i*10)
+        
+        screen.blit(msgSurface,msgRect)
     
-    screen.blit(msgSurface,msgSurface.get_rect())
+    #menu.draw(screen)
     
     food.update()
     
