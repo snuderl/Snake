@@ -241,6 +241,12 @@ while not isGameOver:
             if(s.crash==True):
                 isGameOver=True
                 print "Snake crash"
+                
+    for s1 in snake:
+        for s2 in snake:
+            if(s1!=s2 and s1.position in s2.ocupied):
+                isGameOver=True
+                print "Snake crash"
     for s in snake:
         s.draw(screen)
     food.draw(screen)
